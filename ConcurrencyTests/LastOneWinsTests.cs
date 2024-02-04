@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -25,8 +27,8 @@ public class LastOneWinsTests
         var context = new TestContext();
         await context.SeedAsync(initialProduct);
 
-        Action<SimpleProduct> updateAction0 = p => { p.Title = "Cucumber-0"; };
-        Action<SimpleProduct> updateAction1 = p => { p.Title = "Cucumber-1"; };
+        Action<SimpleProduct, ProductDbContext> updateAction0 = (p, _) => { p.Title = "Cucumber-0"; };
+        Action<SimpleProduct, ProductDbContext> updateAction1 = (p, _) => { p.Title = "Cucumber-1"; };
 
         var task0 = Task.Run(async () => await UpdateProductAsync(context, 0, updateAction0));
         var task1 = Task.Run(async () => await UpdateProductAsync(context, 1, updateAction1));
@@ -53,8 +55,8 @@ public class LastOneWinsTests
         var context = new TestContext();
         await context.SeedAsync(initialProduct);
 
-        Action<SimpleProduct> updateAction0 = p => { p.Title = "Cucumber-0"; };
-        Action<SimpleProduct> updateAction1 = p => { p.Title = "Cucumber-1"; };
+        Action<SimpleProduct, ProductDbContext> updateAction0 = (p, _) => { p.Title = "Cucumber-0"; };
+        Action<SimpleProduct, ProductDbContext> updateAction1 = (p, _) => { p.Title = "Cucumber-1"; };
 
         var task0 = Task.Run(async () => await UpdateProductAsync(context, 0, updateAction0));
         var task1 = Task.Run(async () => await UpdateProductAsync(context, 1, updateAction1));
@@ -80,16 +82,53 @@ public class LastOneWinsTests
     {
         var context = new TestContext();
         await context.SeedAsync(initialProduct);
-
-        Action<SimpleProduct> updateAction0 = p =>
+        Action<SimpleProduct, ProductDbContext> updateAction0 = (p, _) =>
         {
             p.Title = "Cucumber";
             p.Price = 1.99m;
         };
-        Action<SimpleProduct> updateAction1 = p =>
+        Action<SimpleProduct, ProductDbContext> updateAction1 = (p, _) =>
         {
             p.Title = "Cucumber-1";
             p.Price = 0.99m;
+        };
+
+        var task0 = Task.Run(async () => await UpdateProductAsync(context, 0, updateAction0));
+        var task1 = Task.Run(async () => await UpdateProductAsync(context, 1, updateAction1));
+
+        synchronizationEvent.Set();
+        await Task.Delay(TimeSpan.FromMilliseconds(10));
+
+        taskEvents[0].Set();
+        await Task.Delay(TimeSpan.FromMilliseconds(50));
+        taskEvents[1].Set();
+
+        await task0;
+        await task1;
+
+        var product = await GetAndPrintProductProperties(context);
+        product.Title.Should().Be("Cucumber-1");
+        product.Price.Should().Be(0.99m);
+        
+        await context.DisposeAsync();
+    }
+    
+    [Fact]
+    public async Task UpdatingMultipleProperties_WithoutEfCoreOptimization_LeadsToCorrectValues()
+    {
+        var context = new TestContext();
+        await context.SeedAsync(initialProduct);
+        Action<SimpleProduct, ProductDbContext> updateAction0 = (p, ctx) =>
+        {
+            p.Title = "Cucumber";
+            p.Price = 1.99m;
+            ctx.ChangeTracker.Entries().Single().State = EntityState.Modified;
+        };
+        Action<SimpleProduct, ProductDbContext> updateAction1 = (p, ctx) =>
+        {
+            p.Title = "Cucumber-1";
+            p.Price = 0.99m;
+            ctx.ChangeTracker.Entries().Single().State = EntityState.Modified;
         };
 
         var task0 = Task.Run(async () => await UpdateProductAsync(context, 0, updateAction0));
@@ -121,7 +160,7 @@ public class LastOneWinsTests
         return existingProduct;
     }
 
-    private async Task UpdateProductAsync(TestContext context, int taskId, Action<SimpleProduct> updateAction)
+    private async Task UpdateProductAsync(TestContext context, int taskId, Action<SimpleProduct, ProductDbContext> updateAction)
     {
         var dbContext = context.GetRequiredService<ProductDbContext>();
         var existingProduct = await dbContext.Set<SimpleProduct>().FindAsync(initialProduct.Id);
@@ -129,7 +168,7 @@ public class LastOneWinsTests
         output.WriteLine($"Task {taskId} retrieved product");
         synchronizationEvent.WaitOne();
         output.WriteLine($"Task {taskId} performing update");
-        updateAction(existingProduct!);
+        updateAction(existingProduct!, dbContext);
         taskEvents[taskId].WaitOne();
         output.WriteLine($"Task {taskId} saving");
         await dbContext.SaveChangesAsync();
