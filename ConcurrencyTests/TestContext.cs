@@ -29,6 +29,13 @@ public class TestContext : IAsyncDisposable
         context.Set<SimpleProduct>().Add(product);
         await context.SaveChangesAsync();
     }
+    
+    public async Task SeedAsync(ConcurrentProduct product)
+    {
+        var context = this.GetRequiredService<ProductDbContext>();
+        context.Set<ConcurrentProduct>().Add(product);
+        await context.SaveChangesAsync();
+    }
 
     public T GetRequiredService<T>() where T : notnull
     {
