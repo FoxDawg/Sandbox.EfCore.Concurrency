@@ -34,10 +34,10 @@ public class LastOneWinsTests
         var task1 = Task.Run(async () => await UpdateProductAsync(context, 1, updateAction1));
 
         synchronizationEvent.Set();
-        await Task.Delay(TimeSpan.FromMilliseconds(10));
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
 
         taskEvents[0].Set();
-        await Task.Delay(TimeSpan.FromMilliseconds(50));
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
         taskEvents[1].Set();
 
         await task0;
@@ -62,10 +62,10 @@ public class LastOneWinsTests
         var task1 = Task.Run(async () => await UpdateProductAsync(context, 1, updateAction1));
 
         synchronizationEvent.Set();
-        await Task.Delay(TimeSpan.FromMilliseconds(10));
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
 
         taskEvents[1].Set();
-        await Task.Delay(TimeSpan.FromMilliseconds(50));
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
         taskEvents[0].Set();
 
         await task0;
@@ -97,10 +97,10 @@ public class LastOneWinsTests
         var task1 = Task.Run(async () => await UpdateProductAsync(context, 1, updateAction1));
 
         synchronizationEvent.Set();
-        await Task.Delay(TimeSpan.FromMilliseconds(10));
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
 
         taskEvents[0].Set();
-        await Task.Delay(TimeSpan.FromMilliseconds(50));
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
         taskEvents[1].Set();
 
         await task0;
@@ -135,10 +135,10 @@ public class LastOneWinsTests
         var task1 = Task.Run(async () => await UpdateProductAsync(context, 1, updateAction1));
 
         synchronizationEvent.Set();
-        await Task.Delay(TimeSpan.FromMilliseconds(10));
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
 
         taskEvents[0].Set();
-        await Task.Delay(TimeSpan.FromMilliseconds(50));
+        await Task.Delay(TimeSpan.FromMilliseconds(100));
         taskEvents[1].Set();
 
         await task0;
